@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corroboration Score Simulator</title>
+<style>
+  :root{
+    --bg:#0C1622; --panel:#122132; --panelUp:#16283C; --line:#23374B;
+    --text:#E8EEF5; --mut:#8AA0B4; --faint:#5A7186;
+    --cyan:#37C8E0; --cyanDim:#1E7E93; --sand:#C9A86A;
+    --green:#4CAF7D; --amber:#E0A93E; --orange:#E4842E; --red:#E4572E;
+    --mono:'SFMono-Regular',Consolas,'Courier New',monospace;
+    --disp:'Arial Narrow','Barlow Condensed',sans-serif;
+    --body:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--body);min-height:100vh;padding-bottom:40px}
+  header{border-bottom:1px solid var(--line);padding:22px 28px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;justify-content:space-between}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--cyan);text-transform:uppercase}
+  h1{font-family:var(--disp);font-size:34px;font-weight:600;margin-top:2px;letter-spacing:.01em}
+  .sub{color:var(--mut);font-size:13px;margin-top:4px;max-width:640px}
+  .badge{display:inline-flex;flex-direction:column;align-items:flex-end;border:1px solid var(--cyanDim);border-radius:8px;padding:6px 12px;background:rgba(30,126,147,.12)}
+  .badge .b-k{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+  .badge .b-v{font-family:var(--disp);font-size:16px;font-weight:600;color:var(--cyan);line-height:1.1}
+  main{display:grid;grid-template-columns:minmax(360px,1.15fr) minmax(300px,1fr);gap:16px;padding:18px 28px 0;align-items:start}
+  @media(max-width:880px){main{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .card h2{font-family:var(--disp);font-size:20px;font-weight:600;margin-bottom:4px}
+  .card .hint{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-bottom:14px}
+  .stream{margin:14px 0}
+  .stream-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .stream-name{font-weight:600;font-size:14px}
+  .stream-name .w{font-family:var(--mono);font-size:10px;color:var(--faint);margin-left:8px;letter-spacing:.08em}
+  .stream-lvl{font-family:var(--mono);font-size:12px;font-weight:600}
+  input[type=range]{width:100%;height:6px;-webkit-appearance:none;border-radius:3px;outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--cyanDim);cursor:pointer;margin-top:0}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--cyanDim);cursor:pointer}
+  .ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--faint);margin-top:3px;text-transform:uppercase;letter-spacing:.06em}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+  .presets button{font-family:var(--mono);font-size:11.5px;padding:7px 12px;border-radius:6px;cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--text)}
+  .presets button:hover{border-color:var(--cyan)}
+  .gauge-wrap{display:flex;flex-direction:column;align-items:center;padding:6px 0 10px}
+  .score-num{font-family:var(--disp);font-size:74px;font-weight:600;line-height:.9}
+  .score-label{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-top:2px}
+  .tier-pill{margin-top:14px;padding:8px 18px;border-radius:20px;font-family:var(--disp);font-size:22px;font-weight:600;letter-spacing:.02em}
+  .tierbar{display:flex;margin-top:16px;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+  .tierbar .seg{flex:1;padding:7px 4px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);position:relative}
+  .tierbar .seg.active{color:#0C1622;font-weight:700}
+  .agree{margin-top:16px;padding:12px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--line)}
+  .agree h4{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+  .agree-row{display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px}
+  .agree-row .n{color:var(--mut)}
+  .agree-row .v{font-family:var(--mono);font-weight:600}
+  .explain{margin-top:14px;padding:11px 13px;background:var(--bg);border-radius:8px;font-size:12.5px;color:var(--mut);line-height:1.5}
+  .note{padding:10px 28px 0;font-family:var(--mono);font-size:10px;color:var(--faint)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="eyebrow">TSF monitoring · what-if simulator</div>
+    <h1>Corroboration Score Simulator</h1>
+    <div class="sub">Move any of the five independent streams and watch the combined corroboration score — and its response tier — update live. Illustrative scoring logic for demonstration; not the production model.</div>
+  </div>
+  <div class="badge"><span class="b-k">Scoring</span><span class="b-v">5 streams · equal weight</span></div>
+</header>
+
+<main>
+  <!-- LEFT: stream controls -->
+  <div class="card">
+    <h2>Five independent streams</h2>
+    <div class="hint">each equally weighted · drag to set anomaly level</div>
+    <div id="streams"></div>
+    <div class="presets">
+      <button onclick="preset('calm')">All normal</button>
+      <button onclick="preset('one')">One stream spikes</button>
+      <button onclick="preset('three')">Three agree</button>
+      <button onclick="preset('event5')">Event 5 (PZ-11)</button>
+      <button onclick="preset('storm')">Heavy rain only</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: live score + tier -->
+  <div class="card">
+    <div class="gauge-wrap">
+      <div class="score-num" id="scoreNum">0</div>
+      <div class="score-label">corroboration score</div>
+      <div class="tier-pill" id="tierPill">L1 · Normal</div>
+    </div>
+    <div class="tierbar" id="tierbar"></div>
+    <div class="agree">
+      <h4>Stream agreement</h4>
+      <div class="agree-row"><span class="n">Streams above watch level</span><span class="v" id="agreeCount">0 / 5</span></div>
+      <div class="agree-row"><span class="n">Mean anomaly level</span><span class="v" id="meanLvl">0%</span></div>
+      <div class="agree-row"><span class="n">Rainfall-explained?</span><span class="v" id="rainFlag">—</span></div>
+    </div>
+    <div class="explain" id="explain"></div>
+  </div>
+</main>
+<div class="note">Illustrative synthetic simulator based on the project workflow — scoring shown is a transparent demonstration rule, not the production model.</div>
+
+<script>
+// five equal-weight streams; value 0-100 anomaly level
+const STREAMS = [
+  {key:"piezo", name:"Piezometer", color:"#4fc3f7"},
+  {key:"weir",  name:"Toe weir",   color:"#00e5ff"},
+  {key:"insar", name:"InSAR",      color:"#ff9e57"},
+  {key:"prism", name:"Survey prism",color:"#ffd24a"},
+  {key:"rain",  name:"Rainfall (covariate)", color:"#9fb3c8"},
+];
+let vals = {piezo:10, weir:10, insar:10, prism:10, rain:10};
+
+const TIERS = [
+  {name:"L1 · Normal",  max:45, color:"#4CAF7D"},
+  {name:"L2 · Alert",   max:65, color:"#E0A93E"},
+  {name:"L3 · Alarm",   max:85, color:"#E4842E"},
+  {name:"L4 · Emergency",max:101, color:"#E4572E"},
+];
+function lvlWord(v){ return v>=66?"High":v>=33?"Elevated":"Normal"; }
+function lvlColor(v){ return v>=66?"#E4572E":v>=33?"#E0A93E":"#41b6c4"; }
+
+// ---- illustrative scoring rule (transparent, equal weight) ----
+// base = mean of the 4 physical streams (piezo, weir, insar, prism), equally weighted
+// agreement bonus: the more streams that independently exceed 'watch', the higher the combined score
+// rainfall acts as a COVARIATE: if rain is high, part of the piezo/weir rise is "explained" and discounted
+function computeScore(){
+  const physical = ["piezo","weir","insar","prism"];
+  // rainfall discount: high rain explains some hydraulic rise (piezo/weir), lowering their effective anomaly
+  const rainDiscount = Math.max(0, (vals.rain-40))/100; // up to ~0.6 at rain=100
+  const eff = {
+    piezo: vals.piezo*(1-0.5*rainDiscount),
+    weir:  vals.weir *(1-0.5*rainDiscount),
+    insar: vals.insar,
+    prism: vals.prism,
+  };
+  const mean = (eff.piezo+eff.weir+eff.insar+eff.prism)/4;
+  const above = physical.filter(k=>eff[k]>=33).length;      // streams past 'watch'
+  // agreement multiplier: 1 stream ->1.0, 2->1.12, 3->1.24, 4->1.36
+  const agree = 1 + 0.12*Math.max(0, above-1);
+  let score = Math.min(100, Math.round(mean*agree));
+  return {score, above, mean, eff, rainDiscount};
+}
+function tierFor(score){ return TIERS.find(t=>score<t.max) || TIERS[TIERS.length-1]; }
+
+function render(){
+  // sliders
+  const host = document.getElementById("streams");
+  if(!host.dataset.built){
+    host.innerHTML = STREAMS.map(s=>`
+      <div class="stream">
+        <div class="stream-top">
+          <span class="stream-name" style="color:${s.color}">${s.name}<span class="w">weight 1/5</span></span>
+          <span class="stream-lvl" id="lvl-${s.key}"></span>
+        </div>
+        <input type="range" min="0" max="100" value="${vals[s.key]}" id="sl-${s.key}"
+          style="accent-color:${s.color}" aria-label="${s.name} anomaly level">
+        <div class="ticks"><span>normal</span><span>watch</span><span>elevated</span><span>high</span></div>
+      </div>`).join("");
+    host.dataset.built = "1";
+    STREAMS.forEach(s=>{
+      document.getElementById("sl-"+s.key).addEventListener("input", e=>{
+        vals[s.key] = +e.target.value; render();
+      });
+    });
+  }
+  STREAMS.forEach(s=>{
+    document.getElementById("sl-"+s.key).value = vals[s.key];
+    const el = document.getElementById("lvl-"+s.key);
+    el.textContent = lvlWord(vals[s.key]);
+    el.style.color = lvlColor(vals[s.key]);
+  });
+
+  const {score, above, mean, rainDiscount} = computeScore();
+  const tier = tierFor(score);
+
+  document.getElementById("scoreNum").textContent = score;
+  document.getElementById("scoreNum").style.color = tier.color;
+  const pill = document.getElementById("tierPill");
+  pill.textContent = tier.name;
+  pill.style.background = tier.color;
+  pill.style.color = "#0C1622";
+
+  // tier bar
+  document.getElementById("tierbar").innerHTML = TIERS.map(t=>{
+    const on = t.name===tier.name;
+    return `<div class="seg ${on?'active':''}" style="background:${on?t.color:'transparent'}">${t.name.split(' · ')[1]}</div>`;
+  }).join("");
+
+  document.getElementById("agreeCount").textContent = above + " / 5";
+  document.getElementById("meanLvl").textContent = Math.round(mean) + "%";
+  const rf = document.getElementById("rainFlag");
+  if(rainDiscount>0.05){ rf.textContent = "yes — discounted"; rf.style.color="var(--amber)"; }
+  else { rf.textContent = "no"; rf.style.color="var(--mut)"; }
+
+  // explanation
+  let msg;
+  if(score < 45) msg = "Low corroboration — streams disagree or sit near baseline. Routine monthly review.";
+  else if(score < 65) msg = above>=2 ? "Some streams agree; score is elevated. Increase review cadence and verify sensors." : "One stream is elevated but others don't agree yet — watch, don't act.";
+  else if(score < 85) msg = "Multiple independent streams agree — a strong, corroborated signal. Geotechnical inspection; notify engineer of record.";
+  else msg = "Near-unanimous agreement across independent streams. Activate emergency plan; lower pond.";
+  if(rainDiscount>0.2 && (vals.piezo>50||vals.weir>50)) msg += " Note: high rainfall explains part of the hydraulic rise, so the score is discounted accordingly.";
+  document.getElementById("explain").textContent = msg;
+}
+
+function preset(kind){
+  if(kind==="calm")  vals={piezo:12,weir:10,insar:14,prism:8, rain:15};
+  if(kind==="one")   vals={piezo:88,weir:15,insar:12,prism:10,rain:20};
+  if(kind==="three") vals={piezo:80,weir:72,insar:78,prism:20,rain:25};
+  if(kind==="event5")vals={piezo:92,weir:85,insar:88,prism:80,rain:60};
+  if(kind==="storm") vals={piezo:70,weir:68,insar:15,prism:12,rain:95};
+  render();
+}
+render();
+</script>
+</body>
+</html>
